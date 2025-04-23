@@ -1,3 +1,5 @@
-#SPDX-License-Identifier: MIT-0
----
-# handlers file for postgres
+- name: Redémarrer PostgreSQL 16
+  ansible.builtin.systemd:
+    name: postgresql@16-main.service
+    state: restarted
+    enabled: true

@@ -15,6 +15,36 @@
     enabled: true
 
 
+- name: Copier les fichiers pg_hba.conf et pg_ident.conf
+  block:
+    - name: Copier pg_hba.conf
+      ansible.builtin.copy:
+        src: pg_hba.conf
+        dest: /etc/postgresql/16/main/pg_hba.conf
+        owner: postgres
+        group: postgres
+        mode: '0640'
+        backup: true
+      register: hba_result
+
+    - name: Copier pg_ident.conf
+      ansible.builtin.copy:
+        src: pg_ident.conf
+        dest: /etc/postgresql/16/main/pg_ident.conf
+        owner: postgres
+        group: postgres
+        mode: '0640'
+        backup: true
+      register: ident_result
+
+    - name: Redémarrer PostgreSQL 16 si l'un des fichiers a été modifié
+      ansible.builtin.systemd:
+        name: postgresql@16-main.service
+        state: restarted
+        enabled: true
+      when: hba_result.changed or ident_result.changed
+
+
 - name: Créer l'utilisateur PostgreSQL "gvm"
   community.postgresql.postgresql_user:
     name: "{postgresql_user}"
