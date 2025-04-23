@@ -1,0 +1,5 @@
+---
+postgresql_user: gvm
+postgresql_db: gvmd
+admin_username: admin
+

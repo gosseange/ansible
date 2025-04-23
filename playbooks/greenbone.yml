@@ -1,0 +1,6 @@
+- name: Déploiement de Greenbone/OpenVAS
+  hosts: all
+  become: yes
+
+  roles:
+    - greenbone

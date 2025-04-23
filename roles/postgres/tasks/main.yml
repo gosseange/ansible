@@ -1,0 +1,49 @@
+---
+
+- name: Installer PostgreSQL
+  apt: 
+    name: 
+      - postgresql
+      - python3-psycopg2
+    state: present
+    update_cache: yes
+
+- name: S'assurer que le service PostgreSQL est démarré
+  systemd:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Créer l'utilisateur PostgreSQL "gvm"
+  community.postgresql.postgresql_user:
+    name: {postgresql_user}
+    password: "Venus123@"
+    role_attr_flags: "NOSUPERUSER"
+    state: present
+  become: true
+  become_user: postgres
+
+- name: Créer la base de données "{{ postgresql_db }}"
+  become_user: postgres
+  postgresql_db:
+    name: "{{ postgresql_db }}"
+    owner: "{{ postgresql_user }}"
+
+- name: Créer le rôle dba avec superuser et sans héritage s'il n'existe pas
+  become_user: postgres
+  postgresql_query:
+    db: "{{ postgresql_db }}"
+    query: >
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'dba') THEN
+          CREATE ROLE dba WITH SUPERUSER NOINHERIT;
+        END IF;
+      END
+      $$;
+
+- name: Accorder le rôle dba à l'utilisateur "{{ postgresql_user }}"
+  become_user: postgres
+  postgresql_query:
+    db: "{{ postgresql_db }}"
+    query: "GRANT dba TO {{ postgresql_user }};"

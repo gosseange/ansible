@@ -1,0 +1,4 @@
+[vulnscanners]
+openvas.conseilnumerik.org ansible_python_interpreter=/usr/bin/python3.12
+
+openvas.conseilnumerik.org
