@@ -1,5 +1,7 @@
 ---
-postgresql_user: gvm
+ansible_ssh_pipelining: true
+postgresql_usr: gvm
 postgresql_db: gvmd
-admin_username: admin
-
+admin_user: admin
+admin_password: Venus@1234
+feed_var: 78eceaec-3385-11ea-b237-28d24461215b 

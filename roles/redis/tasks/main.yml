@@ -40,17 +40,17 @@
     enabled: yes
   tags: ['redis', 'restart-service']
 
-- name: "[gvmd] Configuration des permissions nécessaires pour GVM"
+- name: "[redis] Configuration des permissions nécessaires pour GVM"
   block:
 
-    - name: "[gvmd] Ajouter l'utilisateur gvm au groupe redis"
+    - name: "[redis] Ajouter l'utilisateur gvm au groupe redis"
       ansible.builtin.user:
         name: gvm
         groups: redis
         append: yes
-      tags: ['gvmd', 'redis', 'permissions']
+      tags: ['redis', 'permissions']
 
-    - name: "[gvmd] Créer les répertoires nécessaires"
+    - name: "[redis] Créer les répertoires nécessaires"
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -60,9 +60,9 @@
       loop:
         - /var/lib/notus
         - /run/gvmd
-      tags: ['gvmd', 'permissions']
+      tags: ['redis', 'permissions']
 
-    - name: "[gvmd] Changer le propriétaire des répertoires existants"
+    - name: "[redis] Changer le propriétaire des répertoires existants"
       ansible.builtin.file:
         path: "{{ item }}"
         owner: gvm
@@ -74,9 +74,9 @@
         - /var/lib/notus
         - /var/log/gvm
         - /run/gvmd
-      tags: ['gvmd', 'permissions']
+      tags: ['redis', 'permissions']
 
-    - name: "[gvmd] Appliquer les permissions g+srw aux répertoires critiques"
+    - name: "[redis] Appliquer les permissions g+srw aux répertoires critiques"
       ansible.builtin.file:
         path: "{{ item }}"
         mode: '02770'
@@ -85,12 +85,12 @@
         - /var/lib/gvm
         - /var/lib/openvas
         - /var/log/gvm
-      tags: ['gvmd', 'permissions']
+      tags: ['redis', 'permissions']
 
-    - name: "[gvmd] Ajuster les permissions sur le binaire gvmd"
+    - name: "[redis] Ajuster les permissions sur le binaire gvmd"
       ansible.builtin.file:
         path: /usr/local/sbin/gvmd
         owner: gvm
         group: gvm
         mode: '6750'
-      tags: ['gvmd', 'permissions', 'gvmd-binary']
+      tags: ['redis', 'permissions', 'gvmd-binary']

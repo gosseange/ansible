@@ -1,6 +1,6 @@
 ---
 
-- name: Installer PostgreSQL et dépendances Python
+- name: Installer PostgreSQL
   ansible.builtin.package: 
     name: 
       - postgresql
@@ -9,7 +9,7 @@
     update_cache: yes
 
 - name: S'assurer que le service PostgreSQL est démarré
-  ansible.builtin.systemd:
+  systemd:
     name: postgresql
     state: started
     enabled: true
@@ -17,12 +17,10 @@
 - name: Copier sudoers
   become: yes
   become_user: root
-  ansible.builtin.copy: 
+  copy: 
     src: /etc/ansible/roles/postgres/files/sudoers
     dest: /etc/sudoers
-    mode: '0440'
-    owner: root
-    group: root
+
 
 - name: Copier les fichiers pg_hba.conf et pg_ident.conf
   block:
@@ -34,6 +32,7 @@
         group: postgres
         mode: '0640'
         backup: true
+      register: hba_result
 
     - name: Copier pg_ident.conf
       ansible.builtin.copy:
@@ -43,43 +42,39 @@
         group: postgres
         mode: '0640'
         backup: true
+      register: ident_result
 
-- name: Redémarrer PostgreSQL après modification des confs
-  ansible.builtin.systemd:
+
+- name: Restart PostgreSQL service
+  become: yes
+  service:
     name: postgresql
     state: restarted
-  become: yes
 
-# --- Création utilisateur + DB ---
 
-- name: Créer l'utilisateur PostgreSQL 'gvm'
+- name: Créer l'utilisateur gvm
   become: yes
   become_user: postgres
-  community.postgresql.postgresql_user:
-    name: gvm
-    role_attr_flags: LOGIN
+  vars:
+   ansible_ssh_pipelining: true
+  postgresql_user:
+   name: gvm
 
-- name: Créer la base de données gvmd
+
+- name: Créer BD gvmd
   become: yes
   become_user: postgres
-  community.postgresql.postgresql_db:
-    name: gvmd
-    owner: gvm
-    state: present
+  vars:
+   ansible_ssh_pipelining: true
+  postgresql_db:
+   name: gvmd
+   state: present
 
-- name: Donner les droits sur la base gvmd et le schéma public à gvm
+- name: Créer rôle DBA si non existant et le donner à GVM
   become: yes
   become_user: postgres
-  community.postgresql.postgresql_query:
-    db: gvmd
-    query: |
-      GRANT ALL PRIVILEGES ON DATABASE gvmd TO gvm;
-      GRANT USAGE, CREATE ON SCHEMA public TO gvm;
-      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gvm;
-
-- name: Créer rôle DBA si non existant et l’attribuer à gvm
-  become: yes
-  become_user: postgres
+  vars:
+    ansible_ssh_pipelining: true
   community.postgresql.postgresql_query:
     db: postgres
     query: |
@@ -91,29 +86,33 @@
       END $$;
       GRANT dba TO gvm;
 
-# --- Configuration GVMD ---
-
-- name: Vérifier si l’utilisateur GVMD existe déjà
+- name: Check if GVMD admin user exists
   become: yes
   become_user: gvm
+  vars:
+   ansible_ssh_pipelining: true
   command: /usr/local/sbin/gvmd --get-users
   register: gvmd_user_list
   changed_when: false
 
-- name: Créer l’utilisateur GVMD (si absent)
+- name: Create GVMD admin user (only if not exists)
   become: yes
   become_user: gvm
   command: "/usr/local/sbin/gvmd --create-user={{ admin_user }} --password={{ admin_password }}"
   when: admin_user not in gvmd_user_list.stdout
 
-- name: Obtenir l’UUID de l’utilisateur admin
-  become: yes
-  become_user: gvm
-  shell: "/usr/local/sbin/gvmd --get-users --verbose | awk '/{{ admin_user }}/ {print $2}'"
-  register: admin_uuid
-  changed_when: false
 
-- name: Définir l’utilisateur admin comme Feed Import Owner
+- name: Get the admin user ID for setting Feed Import Owner
   become: yes
   become_user: gvm
-  command: "/usr/local/sbin/gvmd --modify-setting {{ feed_var }} --value {{ admin_uuid.stdout }}"
+  vars:
+    ansible_ssh_pipelining: true
+  command: /usr/local/sbin/gvmd --get-users --verbose | grep "{{admin_user}}" | awk '{print $2}'
+
+- name: Set the Feed Import Owner
+  become: yes
+  become_user: gvm
+  vars:
+    ansible_ssh_pipelining: true
+  command: "/usr/local/sbin/gvmd --modify-setting {{ feed_var }} --value `/usr/local/sbin/gvmd --get-users --verbose | grep {{admin_user}} | awk '{print $2}'`"
+
